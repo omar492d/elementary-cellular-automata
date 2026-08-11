@@ -1,6 +1,8 @@
 local panel = require("panel")
 local util = require("utilities")
 
+local DEBUG = false --Set to true to overlay FPS, generation, rule and history length
+
 WIDTH = 1280
 HEIGHT = 720
 state = {
@@ -16,24 +18,13 @@ state = {
    cells = {}, --Represents a single generation of cells
    history = {} --2D array, stores all the previous generations
 }
---ruleSet = {0,1,0,1,1,0,1,0}
 
 function love.load()
    math.randomseed(os.time())
    love.window.setMode(WIDTH, HEIGHT)
 
-   --local font = love.graphics.newFont()
-   --love.graphics.setFont(font)
-   --suit.theme.font = font
-   --love.graphics.setDefaultFilter("linear", "linear")
-
    panel.height = HEIGHT
-   --love.graphics.setBackgroundColor(255,255,255)
    love.graphics.setBackgroundColor(15/255, 25/255, 35/255)
-   --state.cells = initializeCells()
-   --state.cells = randomizeCells()
-   --state.cells = customCells()
-   --state.initialState = util.shallow_copy(state.cells)
    initializeCells()
    table.insert(state.history, state.cells)
    state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
@@ -41,7 +32,7 @@ function love.load()
 
    local callbacks = {onStep = onStep, onPause = onPause, onReset = resetSimulation,
                      onNextRule = onNextRule, onPreviousRule = onPreviousRule,
-                     onCellChange = changeCellSize, onSpeedChange = changeSpeed, 
+                     onCellChange = changeCellSize,
                      onInitializeCells = initializeCells, onRuleInput = onRuleInput}
    panel:setCallbacks(callbacks)
 
@@ -60,7 +51,6 @@ function love.update(dt)
          state.generation = state.generation + 1
       else
          if not state.shouldRepeat then
-            --state.ruleNumber = state.ruleNumber + 1
             state.ruleNumber = (state.ruleNumber + 1) % 256
             state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
          end
@@ -75,19 +65,14 @@ function love.update(dt)
    if dt < min_dt then
          love.timer.sleep(min_dt - dt)
    end
-   --love.timer.sleep(0.1)
 end
 
 function love.draw()
-   --love.graphics.setScissor(panel.width, 0, WIDTH - panel.width, HEIGHT)
    drawCA()
-   --love.graphics.setScissor()
    panel:draw()
-   local midX = panel.width + (getRowSize() / 2) * state.cellSize
-   --love.graphics.line(midX, 0, midX, HEIGHT)
-   --love.graphics.line(WIDTH/2 - panel.width, 0, WIDTH/2 - panel.width, HEIGHT)
-   --drawDebugInfo()
-   --util.createRuler()
+   if DEBUG then
+      drawDebugInfo()
+   end
 end
 
 function love.keypressed(key)
@@ -117,23 +102,7 @@ end
 
 function changeCellSize(size)
    state.cellSize = util.clamp(size, 1, 10)
-   --rowSize = math.floor(WIDTH / state.cellSize)
-   --rowSize = math.floor((WIDTH - panel.width) / state.cellSize)
-   --state.cells = initializeCells()
-   --state.initialState = util.shallow_copy(state.cells)
-   --state.initialState = initializeCells()
    initializeCells()
-   --resetSimulation()
-   --state.history = {util.shallow_copy(state.cells)}
-   --state.generation = 1
-end
-
-function changeSpeed(dt, speed)
-   --speed: measured in fps
-   local min_dt = 1/speed
-   if dt < min_dt then
-         love.timer.sleep(min_dt - dt)
-   end
 end
 
 function drawDebugInfo()
@@ -149,11 +118,8 @@ function drawCA()
    for i,gen in ipairs(state.history) do
       for j,cell in ipairs(gen) do
          if state.history[i][j] == 1 then
-            --love.graphics.setColor(0, 0, 0)
-            --love.graphics.setColor(100/255, 180/255, 220/255)
             love.graphics.setColor(panel.aliveColor)
             love.graphics.rectangle("fill", panel.width + (j - 1) * state.cellSize, (i - 1) * state.cellSize, state.cellSize, state.cellSize)
-            --love.graphics.rectangle("fill", (j - 1) * state.cellSize, i * state.cellSize, state.cellSize, state.cellSize)
          end
       end
    end
@@ -269,16 +235,6 @@ function initTangentWave()
       end
    end
    return cells
-end
-
-function drawGen(gen)
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      if gen[i] == 1 or gen[i] == "1" then
-         love.graphics.setColor(0, 0, 0)
-         love.graphics.rectangle("fill", i * state.cellSize, state.generation, state.cellSize, state.cellSize)
-      end
-   end
 end
 
 function rules(left, mid, right)

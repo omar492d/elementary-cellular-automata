@@ -6,7 +6,6 @@ local Panel = {
 	width = 200, height = 0, --height will be set in main.lua
 	visible = true,
 	editingAliveColor = true,
-	buttons = {},
 	callbacks = {},
 	inputBox = {text = ""},
 	speedSlider = {value = 120, min = 30, max = 120, step=30},
@@ -19,8 +18,7 @@ local Panel = {
 	dividingLineCoords = {}
 }
 
-function Panel:draw() 
-	--love.graphics.setColor(self.color.r, self.color.g, self.color.b)
+function Panel:draw()
 	love.graphics.setColor(204/255, 204/255, 204/255)
 	love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
 	suit.draw()
@@ -30,7 +28,6 @@ function Panel:draw()
 	love.graphics.line(0, self.dividingLineCoords[4], self.width, self.dividingLineCoords[4])
 	love.graphics.line(0, self.dividingLineCoords[6], self.width, self.dividingLineCoords[6])
 	love.graphics.line(0, self.dividingLineCoords[8], self.width, self.dividingLineCoords[8])
-	--love.graphics.print("Hello is this working", 150, 500)
 end
 
 function Panel:update(dt, state)
@@ -56,7 +53,6 @@ function Panel:update(dt, state)
 	suit.layout:padding(0, 0)
 
 	suit.layout:row(45, 30)
-	--suit.layout:col(45)
 	if suit.Input(self.inputBox, suit.layout:col(50, 30)).submitted then
 		print("submitted: " .. self.inputBox.text)
 		local rule = tonumber(self.inputBox.text)
@@ -67,10 +63,8 @@ function Panel:update(dt, state)
 			end
 		end
 	end
-	--print(suit.layout:nextRow())
 	suit.layout:left(45)
 	suit.layout:padding(10,10)
-	--suit.layout:left(200)
 
 	if suit.Button("Previous", suit.layout:row(65, 30)).hit then
 	 	self.callbacks.onPreviousRule()
@@ -78,29 +72,23 @@ function Panel:update(dt, state)
 	if suit.Button("Next", suit.layout:col(65, 30)).hit then
 		self.callbacks.onNextRule()
 	end
-	--suit.layout:reset(0,0)
 	suit.layout:left()
 	x, y = suit.layout:nextRow()
 	table.insert(self.dividingLineCoords, x)
 	table.insert(self.dividingLineCoords, y)
-	--suit.layout:row()
 
-	--suit.layout:padding(0,0)
 	suit.Label("Speed:", suit.layout:row(140, 20))
 	if suit.Slider(self.speedSlider, suit.layout:row(140, 20)).changed then
-		--self.callbacks.onSpeedChange(dt, self.speedSlider.value)
 		state.speed = self.speedSlider.value
 	end
 	suit.layout:padding(0,0)
 	suit.Label(tostring(math.floor(self.speedSlider.value)), {align="left"}, suit.layout:col(110, 20))
 	suit.layout:left(140, 20)
-	--suit.layout:row()
 
 	suit.Label("Cell Size:", suit.layout:row(140, 20))
 	self.cellSlider.value = state.cellSize
 	if suit.Slider(self.cellSlider, suit.layout:row(140, 20)).changed then
 		self.cellSlider.value = math.floor(self.cellSlider.value)
-		--print(self.cellSlider.value)
 		self.callbacks.onCellChange(self.cellSlider.value)
 		self.callbacks.onStep()
 	end
@@ -208,8 +196,6 @@ function Panel:update(dt, state)
 		end
 	end
 	if suit.Button("Gold", suit.layout:col(58, 30)).hit then
-	 	--self.aliveColor = {120/255, 255/255, 200/255}
-		--self.deadColor = {20/ 255, 0/255, 60/255}
 		self.aliveColor = {255/255, 215/255, 0/255}
 		self.deadColor = {0/ 255, 0/255, 0/255}
 		if self.editingAliveColor then
@@ -238,8 +224,6 @@ function Panel:update(dt, state)
 	local sineWaveLabel = state.initMode == "sineWave" and "> Sine Wave" or "Sine Wave"
 	local halfHalfLabel = state.initMode == "halfHalf" and "> Half/Half" or "Half/Half"
 	local tangentLabel = state.initMode == "tangent" and "> Tangent" or "Tangent"
-	--suit.layout:reset()
-	--suit.layout:padding(5,0)
 	suit.layout:padding(10, 5)
 	if suit.Button(centerLabel, suit.layout:row(85, 25)).hit then
     	state.initMode = "center"
@@ -257,7 +241,7 @@ function Panel:update(dt, state)
 	end
 	if suit.Button(customLabel, suit.layout:col()).hit then
 		state.initMode = "custom"
-		--self.callbacks.onInitializeCells()
+		--Deliberately no regeneration: initCustom() is still a stub (see main.lua)
 	end
 	suit.layout:left()
 
@@ -283,24 +267,6 @@ function Panel:update(dt, state)
 
 end
 
-function  Panel:add(widget)
-	table.insert(self.buttons, widget)
-end
-
-function Panel:mousepressed(mx, my, button)
-	for i, widget in ipairs(self.buttons) do
-		widget:click();
-	end
-end
-
-function Panel:toggle()
-
-end
-
-function Panel:createWidgets()
-	suit.Label("How are you today?", 100,150, 300,30)
-end
-
 function Panel:setCallbacks(callbacks)
 	self.callbacks = callbacks
 end
@@ -311,10 +277,6 @@ end
 
 function Panel:textinput(t)
 	suit.textinput(t)
-end
-
-local function validate(input)
-
 end
 
 return Panel
