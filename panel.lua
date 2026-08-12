@@ -1,4 +1,4 @@
-suit = require("suit")
+local suit = require("suit")
 suit.theme.color.normal.fg = {0, 0, 0}
 
 local Panel = {

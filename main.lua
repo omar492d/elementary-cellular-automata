@@ -43,7 +43,7 @@ function love.load()
 end
 
 function love.update(dt)
-   max = math.floor(HEIGHT / state.cellSize)
+   local max = math.floor(HEIGHT / state.cellSize)
    if not state.isPaused then
       if state.generation <= max then
          state.cells = nextGeneration(state.cells)
@@ -254,9 +254,9 @@ function nextGeneration(currGen)
    nextGen[1] = rules(currGen[rowSize], currGen[1], currGen[2])
    nextGen[rowSize] = rules(currGen[rowSize-1], currGen[rowSize], currGen[1])
    for i=2,rowSize-1 do
-      left = currGen[i - 1]
-      mid = currGen[i]
-      right = currGen[i + 1]
+      local left = currGen[i - 1]
+      local mid = currGen[i]
+      local right = currGen[i + 1]
       nextGen[i] = rules(left, mid, right)
    end
    return nextGen

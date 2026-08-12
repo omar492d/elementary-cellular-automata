@@ -19,7 +19,7 @@ function util.toBinary(num, bits)
       num = math.floor(num / 2)
    end
    if bits > #binary then
-      padding = bits - #binary
+      local padding = bits - #binary
       binary = string.rep("0", padding) .. binary
    end
    return util.strToTable(binary)
@@ -35,7 +35,7 @@ function util.strToTable(str)
 end
 
 function util.printTable(tbl)
-   endString = ""
+   local endString = ""
    for i,v in ipairs(tbl) do
       endString = endString .. v .. ", "
    end
