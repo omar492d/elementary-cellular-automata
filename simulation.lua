@@ -94,6 +94,26 @@ local function initTangentWave(rowSize)
    return cells
 end
 
+--Every starting state, in the order the panel lists them. pairs() has no defined
+--iteration order, so an array is what keeps the button order stable. Adding a
+--pattern here is all that is needed to expose it in the panel.
+Simulation.MODES = {
+   {key = "center",    generate = initCenter},
+   {key = "random",    generate = initRandom},
+   {key = "aliveEnds", generate = initAliveEnds},
+   {key = "custom",    generate = initCustom},
+   {key = "alternate", generate = initAlternate},
+   {key = "sineWave",  generate = initSineWave},
+   {key = "halfHalf",  generate = initHalfHalf},
+   {key = "tangent",   generate = initTangentWave}
+}
+
+--Lookup by mode, built from the list above so the two cannot drift apart
+local generatorFor = {}
+for _, mode in ipairs(Simulation.MODES) do
+   generatorFor[mode.key] = mode.generate
+end
+
 --opts: rowSize, maxGenerations, ruleNumber, initMode
 function Simulation.new(opts)
    local sim = setmetatable({
@@ -142,23 +162,9 @@ end
 
 --Builds a fresh starting row for the current mode, then restarts the run
 function Simulation:initialize()
-   local rowSize = self.rowSize
-   if self.initMode == "center" then
-      self.initialState = initCenter(rowSize)
-   elseif self.initMode == "random" then
-      self.initialState = initRandom(rowSize)
-   elseif self.initMode == "aliveEnds" then
-      self.initialState = initAliveEnds(rowSize)
-   elseif self.initMode == "custom" then
-      self.initialState = initCustom(rowSize)
-   elseif self.initMode == "alternate" then
-      self.initialState = initAlternate(rowSize)
-   elseif self.initMode == "sineWave" then
-      self.initialState = initSineWave(rowSize)
-   elseif self.initMode == "halfHalf" then
-      self.initialState = initHalfHalf(rowSize)
-   elseif self.initMode == "tangent" then
-      self.initialState = initTangentWave(rowSize)
+   local generate = generatorFor[self.initMode]
+   if generate then
+      self.initialState = generate(self.rowSize)
    end
    self:reset()
 end

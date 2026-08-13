@@ -1,6 +1,31 @@
 local suit = require("suit")
 suit.theme.color.normal.fg = {0, 0, 0}
 
+--Colour presets, written as 0-255 channels to match the RGB sliders.
+--Laid out PRESET_COLUMNS to a row.
+local PRESET_COLUMNS = 3
+local PRESETS = {
+	{name = "Classic",  alive = {0, 0, 0},         dead = {255, 255, 255}},
+	{name = "Green",    alive = {100, 255, 120},   dead = {5, 15, 5}},
+	{name = "Cyan",     alive = {0, 200, 255},     dead = {10, 15, 25}},
+	{name = "Arctic",   alive = {180, 235, 255},   dead = {0, 50, 80}},
+	{name = "Hot Pink", alive = {255, 60, 100},    dead = {40, 10, 30}},
+	{name = "Gold",     alive = {255, 215, 0},     dead = {0, 0, 0}}
+}
+
+--Starting-state button labels. Keyed by the mode keys in Simulation.MODES.
+local MODE_COLUMNS = 2
+local MODE_LABELS = {
+	center = "Center",
+	random = "Random",
+	aliveEnds = "Alive Ends",
+	custom = "Custom",
+	alternate = "Alternate",
+	sineWave = "Sine Wave",
+	halfHalf = "Half/Half",
+	tangent = "Tangent"
+}
+
 local Panel = {
 	x = 0, y = 0,
 	width = 200, height = 0, --height will be set in main.lua
@@ -17,6 +42,20 @@ local Panel = {
 	bSlider = {value=220, min=0, max=255},
 	dividingLineCoords = {}
 }
+
+--Pulls the RGB sliders back in line with whichever colour is being edited
+function Panel:syncSlidersToColor()
+	local c = self.editingAliveColor and self.aliveColor or self.deadColor
+	self.rSlider.value = c[1] * 255
+	self.gSlider.value = c[2] * 255
+	self.bSlider.value = c[3] * 255
+end
+
+function Panel:applyPreset(preset)
+	self.aliveColor = {preset.alive[1]/255, preset.alive[2]/255, preset.alive[3]/255}
+	self.deadColor = {preset.dead[1]/255, preset.dead[2]/255, preset.dead[3]/255}
+	self:syncSlidersToColor()
+end
 
 function Panel:draw()
 	love.graphics.setColor(204/255, 204/255, 204/255)
@@ -35,8 +74,8 @@ function Panel:update(dt, state, sim)
 	suit.layout:reset(30, 20)
 	suit.layout:padding(10, 10)
 
-	local label = state.isPaused and "Play" or "Pause"
-	if suit.Button(label, suit.layout:row(140, 30)).hit then
+	local playLabel = state.isPaused and "Play" or "Pause"
+	if suit.Button(playLabel, suit.layout:row(140, 30)).hit then
 		self.callbacks.onPause()
 	end
 	if suit.Button("Reset", suit.layout:row(140, 30)).hit then
@@ -100,13 +139,10 @@ function Panel:update(dt, state, sim)
 	table.insert(self.dividingLineCoords, y)
 
 	suit.Label("Colors", suit.layout:row(140, 30))
-	local label = self.editingAliveColor and "Editing: Alive" or "Editing: Dead"
-	if suit.Button(label, suit.layout:row(140, 30)).hit then
+	local editLabel = self.editingAliveColor and "Editing: Alive" or "Editing: Dead"
+	if suit.Button(editLabel, suit.layout:row(140, 30)).hit then
 		self.editingAliveColor = not self.editingAliveColor
-		local c = self.editingAliveColor and self.aliveColor or self.deadColor
-    	self.rSlider.value = c[1] * 255
-    	self.gSlider.value = c[2] * 255
-    	self.bSlider.value = c[3] * 255
+		self:syncSlidersToColor()
 	end
 	suit.Slider(self.rSlider, suit.layout:row(140, 20))
 	suit.Label(tostring(math.floor(self.rSlider.value)), {align="left"}, suit.layout:col(110, 20))
@@ -128,134 +164,52 @@ function Panel:update(dt, state, sim)
 	x, y = suit.layout:nextRow()
 	suit.layout:reset(10, y+10)
 	suit.layout:padding(3,5)
-	if suit.Button("Classic", suit.layout:row(58, 30)).hit then
-		self.aliveColor = {0, 0, 0}
-		self.deadColor = {1, 1, 1}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
+	for i, preset in ipairs(PRESETS) do
+		local column = (i - 1) % PRESET_COLUMNS
+		local hit
+		if column == 0 then
+			hit = suit.Button(preset.name, suit.layout:row(58, 30)).hit
 		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
+			hit = suit.Button(preset.name, suit.layout:col(58, 30)).hit
+		end
+		if hit then
+			self:applyPreset(preset)
+		end
+		--Step back to the start of the row, once per column added to it
+		if column == PRESET_COLUMNS - 1 or i == #PRESETS then
+			for _ = 1, column do
+				suit.layout:left()
+			end
 		end
 	end
-	if suit.Button("Green", suit.layout:col(58, 30)).hit then
-	 	self.aliveColor = {100/255, 255/255, 120/255}
-		self.deadColor = {5/255, 15/255, 5/255}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
-		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
-		end
-	end
-	if suit.Button("Cyan", suit.layout:col(58, 30)).hit then
-	 	self.aliveColor = {0, 200/255, 255/255}
-		self.deadColor = {10/ 255, 15/255, 25/255}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
-		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
-		end
-	end
-	suit.layout:left()
-	suit.layout:left()
-	if suit.Button("Arctic", suit.layout:row(58, 30)).hit then
-		self.aliveColor = {180/255, 235/255, 255/255}
-		self.deadColor = {0/255, 50/255, 80/255}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
-		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
-		end
-	end
-	if suit.Button("Hot Pink", suit.layout:col(58, 30)).hit then
-	 	self.aliveColor = {255/255, 60/255, 100/255}
-		self.deadColor = {40/255, 10/255, 30/255}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
-		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
-		end
-	end
-	if suit.Button("Gold", suit.layout:col(58, 30)).hit then
-		self.aliveColor = {255/255, 215/255, 0/255}
-		self.deadColor = {0/ 255, 0/255, 0/255}
-		if self.editingAliveColor then
-			self.rSlider.value = self.aliveColor[1] * 255
-			self.gSlider.value = self.aliveColor[2] * 255
-			self.bSlider.value = self.aliveColor[3] * 255
-		else
-			self.rSlider.value = self.deadColor[1] * 255
-			self.gSlider.value = self.deadColor[2] * 255
-			self.bSlider.value = self.deadColor[3] * 255
-		end
-	end
-	suit.layout:left()
-	suit.layout:left()
 
 	x, y = suit.layout:nextRow()
 	table.insert(self.dividingLineCoords, x)
 	table.insert(self.dividingLineCoords, y)
 
 	suit.Label("Starting State", {align="center"}, suit.layout:row(180, 30))
-	local centerLabel = sim.initMode == "center" and "> Center" or "Center"
-	local randomLabel = sim.initMode == "random" and "> Random" or "Random"
-	local aliveEndsLabel = sim.initMode == "aliveEnds" and "> Alive Ends" or "Alive Ends"
-	local customLabel = sim.initMode == "custom" and "> Custom" or "Custom"
-	local alternateLabel = sim.initMode == "alternate" and "> Alternate" or "Alternate"
-	local sineWaveLabel = sim.initMode == "sineWave" and "> Sine Wave" or "Sine Wave"
-	local halfHalfLabel = sim.initMode == "halfHalf" and "> Half/Half" or "Half/Half"
-	local tangentLabel = sim.initMode == "tangent" and "> Tangent" or "Tangent"
 	suit.layout:padding(10, 5)
-	if suit.Button(centerLabel, suit.layout:row(85, 25)).hit then
-		self.callbacks.onInitMode("center")
+	for i, mode in ipairs(sim.MODES) do
+		local modeLabel = MODE_LABELS[mode.key] or mode.key
+		if sim.initMode == mode.key then
+			modeLabel = "> " .. modeLabel
+		end
+		local column = (i - 1) % MODE_COLUMNS
+		local hit
+		if column == 0 then
+			hit = suit.Button(modeLabel, suit.layout:row(85, 25)).hit
+		else
+			hit = suit.Button(modeLabel, suit.layout:col(85, 25)).hit
+		end
+		if hit then
+			self.callbacks.onInitMode(mode.key)
+		end
+		if column == MODE_COLUMNS - 1 or i == #sim.MODES then
+			for _ = 1, column do
+				suit.layout:left()
+			end
+		end
 	end
-	if suit.Button(randomLabel, suit.layout:col(85, 25)).hit then
-		self.callbacks.onInitMode("random")
-	end
-	suit.layout:left()
-
-	if suit.Button(aliveEndsLabel, suit.layout:row(85, 25)).hit then
-		self.callbacks.onInitMode("aliveEnds")
-	end
-	if suit.Button(customLabel, suit.layout:col()).hit then
-		self.callbacks.onInitMode("custom")
-	end
-	suit.layout:left()
-
-	if suit.Button(alternateLabel, suit.layout:row(85, 25)).hit then
-		self.callbacks.onInitMode("alternate")
-	end
-	if suit.Button(sineWaveLabel, suit.layout:col()).hit then
-		self.callbacks.onInitMode("sineWave")
-	end
-	suit.layout:left()
-
-	if suit.Button(halfHalfLabel, suit.layout:row(85, 25)).hit then
-		self.callbacks.onInitMode("halfHalf")
-	end
-	if suit.Button(tangentLabel, suit.layout:col()).hit then
-		self.callbacks.onInitMode("tangent")
-	end
-	suit.layout:left()
 
 end
 
