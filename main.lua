@@ -1,23 +1,21 @@
 local panel = require("panel")
 local util = require("utilities")
+local Simulation = require("simulation")
 
 local DEBUG = false --Set to true to overlay FPS, generation, rule and history length
 
 WIDTH = 1280
 HEIGHT = 720
+
+--View and playback state. The cellular automaton itself lives in `sim`.
 state = {
-   cellSize = 2, --Size of each cell in pixels,
-   generation = 1,
-   ruleNumber = 30, --Current rule being followed
+   cellSize = 2, --Size of each cell in pixels
    isPaused = false,
    shouldRepeat = false,
-   speed = 120,
-   initMode = "center",
-   ruleSet = {0,0,0,1,1,1,1,0}, --Current rule represented in binary
-   initialState = {}, --Stores the very first generation
-   cells = {}, --Represents a single generation of cells
-   history = {} --2D array, stores all the previous generations
+   speed = 120
 }
+
+local sim
 
 function love.load()
    math.randomseed(os.time())
@@ -25,41 +23,40 @@ function love.load()
 
    panel.height = HEIGHT
    love.graphics.setBackgroundColor(15/255, 25/255, 35/255)
-   initializeCells()
-   table.insert(state.history, state.cells)
-   state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
-   util.printTable(util.toBinary(state.ruleNumber, #state.ruleSet))
 
-   local callbacks = {onStep = onStep, onPause = onPause, onReset = resetSimulation,
+   sim = Simulation.new{
+      rowSize = getRowSize(),
+      maxGenerations = getMaxGenerations(),
+      ruleNumber = 30,
+      initMode = "center"
+   }
+   if DEBUG then
+      util.printTable(sim.ruleSet)
+   end
+
+   local callbacks = {onStep = onStep, onPause = onPause, onReset = onReset,
                      onNextRule = onNextRule, onPreviousRule = onPreviousRule,
                      onCellChange = changeCellSize,
-                     onInitializeCells = initializeCells, onRuleInput = onRuleInput}
+                     onInitMode = onInitMode, onRuleInput = onRuleInput}
    panel:setCallbacks(callbacks)
 
    --controls
    print("Press R to enable/disable repeating patterns")
    print("Press SPACE to pause")
-   
+
 end
 
 function love.update(dt)
-   local max = math.floor(HEIGHT / state.cellSize)
    if not state.isPaused then
-      if state.generation <= max then
-         state.cells = nextGeneration(state.cells)
-         table.insert(state.history, state.cells)
-         state.generation = state.generation + 1
+      if not sim:isComplete() then
+         sim:step()
+      elseif state.shouldRepeat then
+         sim:reset()
       else
-         if not state.shouldRepeat then
-            state.ruleNumber = (state.ruleNumber + 1) % 256
-            state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
-         end
-         state.generation = 1
-         state.cells = util.shallow_copy(state.initialState)
-         state.history = {util.shallow_copy(state.cells)}
+         sim:nextRule() --Also restarts the run
       end
    end
-   panel:update(dt, state)
+   panel:update(dt, state, sim)
 
    local min_dt = 1/state.speed
    if dt < min_dt then
@@ -100,24 +97,19 @@ function love.textinput(t)
    panel:textinput(t)
 end
 
-function changeCellSize(size)
-   state.cellSize = util.clamp(size, 1, 10)
-   initializeCells()
-end
-
 function drawDebugInfo()
    love.graphics.setColor(0,0,0)
    love.graphics.print("Current FPS: "..tostring(love.timer.getFPS( )), 10, 10)
-   love.graphics.print("Generation: "..state.generation, 10, 20)
-   love.graphics.print("Rule: "..state.ruleNumber, 10, 30)
-   love.graphics.print("History length: ".. #state.history, 10, 40)
+   love.graphics.print("Generation: "..sim.generation, 10, 20)
+   love.graphics.print("Rule: "..sim.ruleNumber, 10, 30)
+   love.graphics.print("History length: ".. #sim.history, 10, 40)
 end
 
 function drawCA()
    love.graphics.setBackgroundColor(panel.deadColor)
-   for i,gen in ipairs(state.history) do
+   for i,gen in ipairs(sim.history) do
       for j,cell in ipairs(gen) do
-         if state.history[i][j] == 1 then
+         if cell == 1 then
             love.graphics.setColor(panel.aliveColor)
             love.graphics.rectangle("fill", panel.width + (j - 1) * state.cellSize, (i - 1) * state.cellSize, state.cellSize, state.cellSize)
          end
@@ -125,141 +117,13 @@ function drawCA()
    end
 end
 
-function initializeCells()
-   if state.initMode == "center" then
-      state.initialState = initCenter()
-   elseif state.initMode == "random" then
-      state.initialState = initRandom()
-   elseif state.initMode == "aliveEnds" then
-      state.initialState = initAliveEnds()
-   elseif state.initMode == "custom" then
-      state.initialState = initCustom()
-   elseif state.initMode == "alternate" then
-      state.initialState = initAlternate()
-   elseif state.initMode == "sineWave" then
-      state.initialState = initSineWave()
-   elseif state.initMode == "halfHalf" then
-      state.initialState = initHalfHalf()
-   elseif state.initMode == "tangent" then
-      state.initialState = initTangentWave()
-    end
-    resetSimulation()
+--How many cells fit in one row, and how many rows fit on screen
+function getRowSize()
+   return math.floor((WIDTH - panel.width) / state.cellSize)
 end
 
-function initCenter() 
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      table.insert(cells, 0)
-   end
-   cells[math.floor(rowSize/2)] = 1;
-   return cells
-end
-
-function initRandom()
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      table.insert(cells, math.random(0, 1))
-   end
-   return cells
-end
-
-function initAliveEnds()
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      table.insert(cells, 0)
-   end
-   cells[1] = 1
-   cells[2] = 1
-   cells[rowSize] = 1
-   cells[rowSize-1] = 1
-   return cells
-end
-
-function initCustom()
-   --TODO
-   local cells = {}
-   return cells
-end
-
-function initAlternate()
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      if i % 2 == 0 then
-         table.insert(cells, 0)
-      else
-         table.insert(cells, 1)
-      end
-   end
-   return cells
-end
-
-function initSineWave()
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      if math.sin(i) > 0 then
-         table.insert(cells, 1)
-      else
-         table.insert(cells, 0)
-      end
-   end
-   return cells
-end
-
-function initHalfHalf()
-   local cells = {}
-   local rowSize = getRowSize()
-   local mid = math.floor(rowSize/2)
-   for i=1,rowSize do
-      if i <= mid then
-         table.insert(cells, 1)
-      else
-         table.insert(cells, 0)
-      end
-   end
-   return cells
-end
-
-function initTangentWave()
-   local cells = {}
-   local rowSize = getRowSize()
-   for i=1,rowSize do
-      if math.tan(i) > 0 then
-         table.insert(cells, 1)
-      else
-         table.insert(cells, 0)
-      end
-   end
-   return cells
-end
-
-function rules(left, mid, right)
-   --From Nature of Code by Daniel Shiffman
-
-   --Negihborhood can be regarded as 3-bit number
-   local binary = left .. mid .. right
-   local index = tonumber(binary, 2)
-   return state.ruleSet[8 - index] --Ruleset array convention: from 111 to 000; 
-                                   --e.g. in 01100010, 111 maps to 0; 110 maps to 1; 000 maps to 0
-end
-
---Applies the rules to a single generation, and returns the new generation
-function nextGeneration(currGen)
-   local nextGen = util.shallow_copy(currGen)
-   local rowSize = getRowSize()
-   nextGen[1] = rules(currGen[rowSize], currGen[1], currGen[2])
-   nextGen[rowSize] = rules(currGen[rowSize-1], currGen[rowSize], currGen[1])
-   for i=2,rowSize-1 do
-      local left = currGen[i - 1]
-      local mid = currGen[i]
-      local right = currGen[i + 1]
-      nextGen[i] = rules(left, mid, right)
-   end
-   return nextGen
+function getMaxGenerations()
+   return math.floor(HEIGHT / state.cellSize)
 end
 
 --callbacks
@@ -268,42 +132,33 @@ function onPause()
 end
 
 function onStep()
-   local max = math.floor(HEIGHT / state.cellSize)
    if state.isPaused then
-      while state.generation <= max do
-         state.cells = nextGeneration(state.cells)
-         table.insert(state.history, state.cells)
-         state.generation = state.generation + 1
-      end
+      sim:runToEnd()
    end
 end
 
-function resetSimulation()
-   state.cells = util.shallow_copy(state.initialState)
-   state.history = {util.shallow_copy(state.cells)}
-   state.generation = 1
+function onReset()
+   sim:reset()
 end
 
-function onRuleInput(rule) 
-   resetSimulation()
-   state.ruleNumber = rule
-   state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
+function onRuleInput(rule)
+   sim:setRule(rule)
+   sim:reset()
 end
 
 function onPreviousRule()
-   resetSimulation()
-   state.ruleNumber = (state.ruleNumber - 1 + 256) % 256
-   state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
+   sim:previousRule()
 end
 
 function onNextRule()
-   resetSimulation()
-   state.ruleNumber = (state.ruleNumber + 1) % 256
-   state.ruleSet = util.toBinary(state.ruleNumber, #state.ruleSet)
+   sim:nextRule()
 end
 
-function getRowSize()
-   return math.floor((WIDTH - panel.width) / state.cellSize)
+function onInitMode(initMode)
+   sim:setInitMode(initMode)
 end
 
-
+function changeCellSize(size)
+   state.cellSize = util.clamp(size, 1, 10)
+   sim:resize(getRowSize(), getMaxGenerations())
+end

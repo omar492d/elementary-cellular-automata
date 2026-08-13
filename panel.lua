@@ -30,7 +30,7 @@ function Panel:draw()
 	love.graphics.line(0, self.dividingLineCoords[8], self.width, self.dividingLineCoords[8])
 end
 
-function Panel:update(dt, state)
+function Panel:update(dt, state, sim)
 	self.dividingLineCoords = {}
 	suit.layout:reset(30, 20)
 	suit.layout:padding(10, 10)
@@ -49,7 +49,7 @@ function Panel:update(dt, state)
 	table.insert(self.dividingLineCoords, x)
 	table.insert(self.dividingLineCoords, y)
 
-	suit.Label("Rule: "..state.ruleNumber, suit.layout:row(140, 30))
+	suit.Label("Rule: "..sim.ruleNumber, suit.layout:row(140, 30))
 	suit.layout:padding(0, 0)
 
 	suit.layout:row(45, 30)
@@ -216,52 +216,44 @@ function Panel:update(dt, state)
 	table.insert(self.dividingLineCoords, y)
 
 	suit.Label("Starting State", {align="center"}, suit.layout:row(180, 30))
-	local centerLabel = state.initMode == "center" and "> Center" or "Center"
-	local randomLabel = state.initMode == "random" and "> Random" or "Random"
-	local aliveEndsLabel = state.initMode == "aliveEnds" and "> Alive Ends" or "Alive Ends"
-	local customLabel = state.initMode == "custom" and "> Custom" or "Custom"
-	local alternateLabel = state.initMode == "alternate" and "> Alternate" or "Alternate"
-	local sineWaveLabel = state.initMode == "sineWave" and "> Sine Wave" or "Sine Wave"
-	local halfHalfLabel = state.initMode == "halfHalf" and "> Half/Half" or "Half/Half"
-	local tangentLabel = state.initMode == "tangent" and "> Tangent" or "Tangent"
+	local centerLabel = sim.initMode == "center" and "> Center" or "Center"
+	local randomLabel = sim.initMode == "random" and "> Random" or "Random"
+	local aliveEndsLabel = sim.initMode == "aliveEnds" and "> Alive Ends" or "Alive Ends"
+	local customLabel = sim.initMode == "custom" and "> Custom" or "Custom"
+	local alternateLabel = sim.initMode == "alternate" and "> Alternate" or "Alternate"
+	local sineWaveLabel = sim.initMode == "sineWave" and "> Sine Wave" or "Sine Wave"
+	local halfHalfLabel = sim.initMode == "halfHalf" and "> Half/Half" or "Half/Half"
+	local tangentLabel = sim.initMode == "tangent" and "> Tangent" or "Tangent"
 	suit.layout:padding(10, 5)
 	if suit.Button(centerLabel, suit.layout:row(85, 25)).hit then
-    	state.initMode = "center"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("center")
 	end
 	if suit.Button(randomLabel, suit.layout:col(85, 25)).hit then
-		state.initMode = "random"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("random")
 	end
 	suit.layout:left()
 
 	if suit.Button(aliveEndsLabel, suit.layout:row(85, 25)).hit then
-		state.initMode = "aliveEnds"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("aliveEnds")
 	end
 	if suit.Button(customLabel, suit.layout:col()).hit then
-		state.initMode = "custom"
-		--Deliberately no regeneration: initCustom() is still a stub (see main.lua)
+		self.callbacks.onInitMode("custom")
 	end
 	suit.layout:left()
 
 	if suit.Button(alternateLabel, suit.layout:row(85, 25)).hit then
-		state.initMode = "alternate"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("alternate")
 	end
 	if suit.Button(sineWaveLabel, suit.layout:col()).hit then
-		state.initMode = "sineWave"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("sineWave")
 	end
 	suit.layout:left()
 
 	if suit.Button(halfHalfLabel, suit.layout:row(85, 25)).hit then
-		state.initMode = "halfHalf"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("halfHalf")
 	end
 	if suit.Button(tangentLabel, suit.layout:col()).hit then
-		state.initMode = "tangent"
-		self.callbacks.onInitializeCells()
+		self.callbacks.onInitMode("tangent")
 	end
 	suit.layout:left()
 
