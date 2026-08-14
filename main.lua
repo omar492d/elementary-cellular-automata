@@ -28,13 +28,14 @@ function love.load()
       rowSize = getRowSize(),
       maxGenerations = getMaxGenerations(),
       ruleNumber = 30,
-      initMode = "center"
+      initMode = "center",
+      scrolling = true
    }
    if DEBUG then
       util.printTable(sim.ruleSet)
    end
 
-   local callbacks = {onStep = onStep, onPause = onPause, onReset = onReset,
+   local callbacks = {onFill = onFill, onPause = onPause, onReset = onReset,
                      onNextRule = onNextRule, onPreviousRule = onPreviousRule,
                      onCellChange = changeCellSize,
                      onInitMode = onInitMode, onRuleInput = onRuleInput}
@@ -77,6 +78,8 @@ function love.keypressed(key)
       state.isPaused = not state.isPaused
    elseif key == "r" then
       state.shouldRepeat = not state.shouldRepeat
+   elseif key == "s" then
+      sim.scrolling = not sim.scrolling
    elseif key == "left" then
       onPreviousRule()
    elseif key == "right" then
@@ -131,9 +134,9 @@ function onPause()
    state.isPaused = not state.isPaused
 end
 
-function onStep()
+function onFill()
    if state.isPaused then
-      sim:runToEnd()
+      sim:fillScreen()
    end
 end
 

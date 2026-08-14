@@ -81,8 +81,8 @@ function Panel:update(dt, state, sim)
 	if suit.Button("Reset", suit.layout:row(140, 30)).hit then
 		self.callbacks.onReset()
 	end
-	if suit.Button("Step", suit.layout:row(140, 30)).hit then
-		self.callbacks.onStep()
+	if suit.Button("Fill", suit.layout:row(140, 30)).hit then
+		self.callbacks.onFill()
 	end
 	local x, y = suit.layout:nextRow()
 	table.insert(self.dividingLineCoords, x)
@@ -129,7 +129,7 @@ function Panel:update(dt, state, sim)
 	if suit.Slider(self.cellSlider, suit.layout:row(140, 20)).changed then
 		self.cellSlider.value = math.floor(self.cellSlider.value)
 		self.callbacks.onCellChange(self.cellSlider.value)
-		self.callbacks.onStep()
+		self.callbacks.onFill()
 	end
 	suit.Label(tostring(math.floor(state.cellSize)), {align="left"}, suit.layout:col(110, 20))
 	suit.layout:left(140, 20)

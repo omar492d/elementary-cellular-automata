@@ -120,6 +120,7 @@ function Simulation.new(opts)
       rowSize = opts.rowSize,
       maxGenerations = opts.maxGenerations,
       initMode = opts.initMode,
+      scrolling = opts.scrolling,
       ruleNumber = 0,
       ruleSet = {},      --Current rule in binary, most significant bit first
       generation = 1,
@@ -177,7 +178,7 @@ function Simulation:reset()
 end
 
 function Simulation:isComplete()
-   return self.generation > self.maxGenerations
+   return not self.scrolling and self.generation > self.maxGenerations
 end
 
 --Looks up one neighborhood. The neighborhood is a 3-bit number, and ruleSet
@@ -209,12 +210,17 @@ end
 function Simulation:step()
    self.cells = self:nextGeneration(self.cells)
    table.insert(self.history, self.cells)
+   if (self.scrolling and #self.history > self.maxGenerations) then
+      table.remove(self.history, 1)
+   end
    self.generation = self.generation + 1
 end
 
---Runs out the remaining generations in one go
-function Simulation:runToEnd()
-   while not self:isComplete() do
+--Fills the empty rows below the run in one go. Measures #history rather than
+--generation because while scrolling the generation count climbs forever but the
+--history stays pinned at maxGenerations, so a full screen correctly adds nothing.
+function Simulation:fillScreen()
+   while #self.history < self.maxGenerations do
       self:step()
    end
 end
