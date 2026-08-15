@@ -16,6 +16,7 @@ state = {
 }
 
 local sim
+local canvasA, canvasB, activeCanvas
 
 function love.load()
    math.randomseed(os.time())
@@ -41,28 +42,35 @@ function love.load()
                      onInitMode = onInitMode, onRuleInput = onRuleInput}
    panel:setCallbacks(callbacks)
 
+   local caWidth = WIDTH - panel.width
+   canvasA = love.graphics.newCanvas(caWidth, HEIGHT)
+   canvasB = love.graphics.newCanvas(caWidth, HEIGHT)
+   activeCanvas = canvasA
+
    --controls
    print("Press R to enable/disable repeating patterns")
    print("Press SPACE to pause")
 
 end
 
+local stepTimer = 0
 function love.update(dt)
    if not state.isPaused then
-      if not sim:isComplete() then
-         sim:step()
-      elseif state.shouldRepeat then
-         sim:reset()
-      else
-         sim:nextRule() --Also restarts the run
+      stepTimer = stepTimer + dt
+      local stepInterval = 1 / state.speed
+      while stepTimer >= stepInterval do
+         if not sim:isComplete() then -- pattern not complete
+            sim:step()
+            drawRowToCanvas(sim.cells, state.cellSize)
+         elseif sim:isComplete() and state.shouldRepeat then -- pattern complete and repeating enabled
+            sim:reset()
+         else
+            sim:nextRule() --Also restarts the run --pattern complete and repeating disabled
+         end
+         stepTimer = stepTimer - stepInterval
       end
    end
    panel:update(dt, state, sim)
-
-   local min_dt = 1/state.speed
-   if dt < min_dt then
-         love.timer.sleep(min_dt - dt)
-   end
 end
 
 function love.draw()
@@ -71,6 +79,46 @@ function love.draw()
    if DEBUG then
       drawDebugInfo()
    end
+end
+
+function drawRowToCanvas(row, cellSize)
+   local other = (activeCanvas == canvasA) and canvasB or canvasA
+   love.graphics.setCanvas(other)
+
+   local dead = panel.deadColor
+   love.graphics.clear(dead[1], dead[2], dead[3], 1)
+
+   love.graphics.setColor(1, 1, 1, 1)
+   love.graphics.draw(activeCanvas, 0, -cellSize)  -- shift old content up
+
+   --love.graphics.setBlendMode("alpha")
+   love.graphics.setColor(panel.aliveColor)
+   for j, cell in ipairs(row) do
+      if cell == 1 then
+         love.graphics.rectangle("fill", (j-1)*cellSize, HEIGHT - cellSize, cellSize, cellSize)
+      end
+   end
+
+   love.graphics.setColor(1, 1, 1, 1)
+   love.graphics.setCanvas()
+   activeCanvas = other
+end
+
+function drawCA()
+   --[[
+   love.graphics.setBackgroundColor(panel.deadColor)
+   for i,gen in ipairs(sim.history) do
+      for j,cell in ipairs(gen) do
+         if cell == 1 then
+            love.graphics.setColor(panel.aliveColor)
+            love.graphics.rectangle("fill", panel.width + (j - 1) * state.cellSize, (i - 1) * state.cellSize, state.cellSize, state.cellSize)
+         end
+      end
+   end
+   ]]
+   --love.graphics.setBlendMode("alpha", "premultiplied")
+   love.graphics.setColor(1, 1, 1, 1)
+   love.graphics.draw(activeCanvas, panel.width, 0)
 end
 
 function love.keypressed(key)
@@ -106,18 +154,6 @@ function drawDebugInfo()
    love.graphics.print("Generation: "..sim.generation, 10, 20)
    love.graphics.print("Rule: "..sim.ruleNumber, 10, 30)
    love.graphics.print("History length: ".. #sim.history, 10, 40)
-end
-
-function drawCA()
-   love.graphics.setBackgroundColor(panel.deadColor)
-   for i,gen in ipairs(sim.history) do
-      for j,cell in ipairs(gen) do
-         if cell == 1 then
-            love.graphics.setColor(panel.aliveColor)
-            love.graphics.rectangle("fill", panel.width + (j - 1) * state.cellSize, (i - 1) * state.cellSize, state.cellSize, state.cellSize)
-         end
-      end
-   end
 end
 
 --How many cells fit in one row, and how many rows fit on screen

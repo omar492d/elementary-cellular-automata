@@ -33,7 +33,7 @@ local Panel = {
 	editingAliveColor = true,
 	callbacks = {},
 	inputBox = {text = ""},
-	speedSlider = {value = 120, min = 30, max = 120, step=30},
+	speedSlider = {value = 120, min = 1, max = 120, step=30},
 	cellSlider = {value = 4, min = 1, max = 10, step = 1},
 	aliveColor = {100/255,180/255,220/255},
 	deadColor = {15/255,20/255,35/255},
@@ -67,6 +67,7 @@ function Panel:draw()
 	love.graphics.line(0, self.dividingLineCoords[4], self.width, self.dividingLineCoords[4])
 	love.graphics.line(0, self.dividingLineCoords[6], self.width, self.dividingLineCoords[6])
 	love.graphics.line(0, self.dividingLineCoords[8], self.width, self.dividingLineCoords[8])
+	
 end
 
 function Panel:update(dt, state, sim)
@@ -210,7 +211,7 @@ function Panel:update(dt, state, sim)
 			end
 		end
 	end
-
+	love.graphics.rectangle("fill", 60, 100, 200, 250)
 end
 
 function Panel:setCallbacks(callbacks)
