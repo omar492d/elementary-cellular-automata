@@ -21,7 +21,7 @@ local canvasA, canvasB, activeCanvas
 
 --- Initialize the window, simulation, render canvases, callbacks, and audio.
 function love.load()
-   love.window.setTitle("CAS")
+   love.window.setTitle("CAPE")
 
    math.randomseed(os.time())
    love.window.setMode(WIDTH, HEIGHT)
