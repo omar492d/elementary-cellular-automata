@@ -6,7 +6,7 @@ Simulation.__index = Simulation
 local RULE_COUNT = 256 --Elementary CA rules are numbered 0..255
 local RULE_BITS = 8    --One bit per possible 3-cell neighborhood
 
---Starting-state generators. Each takes the row size and returns a new row.
+--- Build a row with one live cell at its center.
 local function initCenter(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -16,6 +16,7 @@ local function initCenter(rowSize)
    return cells
 end
 
+--- Build a row with randomly selected live cells.
 local function initRandom(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -24,6 +25,7 @@ local function initRandom(rowSize)
    return cells
 end
 
+--- Build a row with two live cells at each end.
 local function initAliveEnds(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -36,7 +38,7 @@ local function initAliveEnds(rowSize)
    return cells
 end
 
---TODO: let the user paint this row directly; for now it is a blank canvas
+--- Build an empty row for a custom starting pattern.
 local function initCustom(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -45,6 +47,7 @@ local function initCustom(rowSize)
    return cells
 end
 
+--- Build an alternating row with every other cell alive.
 local function initAlternate(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -57,6 +60,7 @@ local function initAlternate(rowSize)
    return cells
 end
 
+--- Build a row from the positive portions of a sine wave.
 local function initSineWave(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -69,6 +73,7 @@ local function initSineWave(rowSize)
    return cells
 end
 
+--- Build a row with its left half alive and right half empty.
 local function initHalfHalf(rowSize)
    local cells = {}
    local mid = math.floor(rowSize/2)
@@ -82,6 +87,7 @@ local function initHalfHalf(rowSize)
    return cells
 end
 
+--- Build a row from the positive portions of a tangent wave.
 local function initTangentWave(rowSize)
    local cells = {}
    for i=1,rowSize do
@@ -114,7 +120,7 @@ for _, mode in ipairs(Simulation.MODES) do
    generatorFor[mode.key] = mode.generate
 end
 
---opts: rowSize, maxGenerations, ruleNumber, initMode
+--- Create a simulation from its grid dimensions, rule, and initial mode.
 function Simulation.new(opts)
    local sim = setmetatable({
       rowSize = opts.rowSize,
@@ -133,35 +139,38 @@ function Simulation.new(opts)
    return sim
 end
 
+--- Normalize a rule number and store its eight-bit representation.
 function Simulation:setRule(ruleNumber)
    self.ruleNumber = ruleNumber % RULE_COUNT
    self.ruleSet = util.toBinary(self.ruleNumber, RULE_BITS)
 end
 
---Advancing the rule restarts the run, so the new rule is drawn from the top
+--- Advance to the next rule and restart from the initial row.
 function Simulation:nextRule()
    self:setRule(self.ruleNumber + 1)
    self:reset()
 end
 
+--- Move to the previous rule and restart from the initial row.
 function Simulation:previousRule()
    self:setRule(self.ruleNumber - 1 + RULE_COUNT)
    self:reset()
 end
 
+--- Select an initial pattern and rebuild the starting row.
 function Simulation:setInitMode(initMode)
    self.initMode = initMode
    self:initialize()
 end
 
---Called when the cell size changes, since that changes how many cells fit
+--- Update grid dimensions and regenerate the starting row.
 function Simulation:resize(rowSize, maxGenerations)
    self.rowSize = rowSize
    self.maxGenerations = maxGenerations
    self:initialize()
 end
 
---Builds a fresh starting row for the current mode, then restarts the run
+--- Generate the initial row for the selected mode and reset the run.
 function Simulation:initialize()
    local generate = generatorFor[self.initMode]
    if generate then
@@ -170,27 +179,25 @@ function Simulation:initialize()
    self:reset()
 end
 
---Restarts from the stored starting row, keeping the current rule
+--- Restart from the stored initial row without changing the current rule.
 function Simulation:reset()
    self.cells = util.shallow_copy(self.initialState)
    self.history = {self.cells}
    self.generation = 1
 end
 
+--- Report whether a non-scrolling run has filled the visible height.
 function Simulation:isComplete()
    return not self.scrolling and self.generation > self.maxGenerations
 end
 
---Looks up one neighborhood. The neighborhood is a 3-bit number, and ruleSet
---runs from 111 down to 000; e.g. in 01100010, 111 maps to 0 and 110 maps to 1.
---From Nature of Code by Daniel Shiffman.
+--- Look up the rule output for a three-cell neighborhood.
 function Simulation:rule(left, mid, right)
    local index = tonumber(left .. mid .. right, 2)
    return self.ruleSet[RULE_BITS - index]
 end
 
---Applies the rule to a single generation and returns the new generation.
---Edges wrap around.
+--- Apply the rule to a row, wrapping neighborhoods across both edges.
 function Simulation:nextGeneration(currGen)
    local nextGen = util.shallow_copy(currGen)
    local rowSize = self.rowSize
@@ -205,8 +212,7 @@ function Simulation:nextGeneration(currGen)
    return nextGen
 end
 
---Advances one generation. history stores the same table as cells, which is
---safe because nextGeneration always returns a fresh one.
+--- Advance one generation and append its fresh cell row to history.
 function Simulation:step()
    self.cells = self:nextGeneration(self.cells)
    table.insert(self.history, self.cells)
@@ -216,12 +222,13 @@ function Simulation:step()
    self.generation = self.generation + 1
 end
 
---Fills the empty rows below the run in one go. Measures #history rather than
---generation because while scrolling the generation count climbs forever but the
---history stays pinned at maxGenerations, so a full screen correctly adds nothing.
-function Simulation:fillScreen()
+--- Fill available history rows and optionally report each newly generated row.
+function Simulation:fillScreen(onStep)
    while #self.history < self.maxGenerations do
       self:step()
+      if onStep then
+         onStep(self.cells)
+      end
    end
 end
 

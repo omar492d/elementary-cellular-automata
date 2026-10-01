@@ -1,6 +1,7 @@
 local panel = require("panel")
 local util = require("utilities")
 local Simulation = require("simulation")
+--local audio = require("audio")
 
 local DEBUG = false --Set to true to overlay FPS, generation, rule and history length
 
@@ -9,7 +10,7 @@ HEIGHT = 720
 
 --View and playback state. The cellular automaton itself lives in `sim`.
 state = {
-   cellSize = 2, --Size of each cell in pixels
+   cellSize = 1,
    isPaused = false,
    shouldRepeat = false,
    speed = 120
@@ -18,7 +19,10 @@ state = {
 local sim
 local canvasA, canvasB, activeCanvas
 
+--- Initialize the window, simulation, render canvases, callbacks, and audio.
 function love.load()
+   love.window.setTitle("CAS")
+
    math.randomseed(os.time())
    love.window.setMode(WIDTH, HEIGHT)
 
@@ -30,7 +34,7 @@ function love.load()
       maxGenerations = getMaxGenerations(),
       ruleNumber = 30,
       initMode = "center",
-      scrolling = true
+      scrolling = false
    }
    if DEBUG then
       util.printTable(sim.ruleSet)
@@ -47,23 +51,30 @@ function love.load()
    canvasB = love.graphics.newCanvas(caWidth, HEIGHT)
    activeCanvas = canvasA
 
-   --controls
-   print("Press R to enable/disable repeating patterns")
-   print("Press SPACE to pause")
+   drawRowToCanvas(sim.cells, state.cellSize)
+
+   --audio:buildDefault()
+
+   print("R - toggle repeating patterns. Disable to have changing rules when pattern completes")
+   print("SPACE - pause/resume")
+   print("S - toggle scrolling. Disable to see the entire pattern at once")
+   print("LEFT/RIGHT - previous/next rule")
+   print("UP/DOWN - increase/decrease cell size")
 
 end
 
 local stepTimer = 0
+--- Advance the simulation at its configured rate and update the panel.
 function love.update(dt)
    if not state.isPaused then
       stepTimer = stepTimer + dt
       local stepInterval = 1 / state.speed
       while stepTimer >= stepInterval do
-         if not sim:isComplete() then -- pattern not complete
+         if not sim:isComplete() then
             sim:step()
             drawRowToCanvas(sim.cells, state.cellSize)
-         elseif sim:isComplete() and state.shouldRepeat then -- pattern complete and repeating enabled
-            sim:reset()
+         elseif sim:isComplete() and state.shouldRepeat then
+            onReset()
          else
             sim:nextRule() --Also restarts the run --pattern complete and repeating disabled
          end
@@ -73,6 +84,7 @@ function love.update(dt)
    panel:update(dt, state, sim)
 end
 
+--- Render the automaton, control panel, and optional debug information.
 function love.draw()
    drawCA()
    panel:draw()
@@ -81,6 +93,7 @@ function love.draw()
    end
 end
 
+--- Scroll the existing canvas and append one generation at its bottom edge.
 function drawRowToCanvas(row, cellSize)
    local other = (activeCanvas == canvasA) and canvasB or canvasA
    love.graphics.setCanvas(other)
@@ -89,9 +102,8 @@ function drawRowToCanvas(row, cellSize)
    love.graphics.clear(dead[1], dead[2], dead[3], 1)
 
    love.graphics.setColor(1, 1, 1, 1)
-   love.graphics.draw(activeCanvas, 0, -cellSize)  -- shift old content up
+   love.graphics.draw(activeCanvas, 0, -cellSize)
 
-   --love.graphics.setBlendMode("alpha")
    love.graphics.setColor(panel.aliveColor)
    for j, cell in ipairs(row) do
       if cell == 1 then
@@ -104,8 +116,14 @@ function drawRowToCanvas(row, cellSize)
    activeCanvas = other
 end
 
+--- Draw the accumulated automaton canvas beside the control panel.
 function drawCA()
-   --[[
+   love.graphics.setColor(1, 1, 1, 1)
+   love.graphics.draw(activeCanvas, panel.width, 0)
+end
+
+--- Render stored generations directly from history as an alternate view.
+function drawCaOld() 
    love.graphics.setBackgroundColor(panel.deadColor)
    for i,gen in ipairs(sim.history) do
       for j,cell in ipairs(gen) do
@@ -115,12 +133,9 @@ function drawCA()
          end
       end
    end
-   ]]
-   --love.graphics.setBlendMode("alpha", "premultiplied")
-   love.graphics.setColor(1, 1, 1, 1)
-   love.graphics.draw(activeCanvas, panel.width, 0)
 end
 
+--- Handle application shortcuts and forward key presses to the panel.
 function love.keypressed(key)
    if key == "space" then
       state.isPaused = not state.isPaused
@@ -144,10 +159,12 @@ function love.keypressed(key)
    panel:keypressed(key)
 end
 
+--- Forward typed characters to the panel's text input widgets.
 function love.textinput(t)
    panel:textinput(t)
 end
 
+--- Draw runtime counters when debug output is enabled.
 function drawDebugInfo()
    love.graphics.setColor(0,0,0)
    love.graphics.print("Current FPS: "..tostring(love.timer.getFPS( )), 10, 10)
@@ -156,47 +173,65 @@ function drawDebugInfo()
    love.graphics.print("History length: ".. #sim.history, 10, 40)
 end
 
---How many cells fit in one row, and how many rows fit on screen
+--- Return the number of cells that fit horizontally at the current cell size.
 function getRowSize()
    return math.floor((WIDTH - panel.width) / state.cellSize)
 end
 
+--- Return the number of generations that fit vertically at the current cell size.
 function getMaxGenerations()
    return math.floor(HEIGHT / state.cellSize)
 end
 
---callbacks
+--- Toggle whether simulation playback is paused.
 function onPause()
    state.isPaused = not state.isPaused
 end
 
+--- Fast-forward a paused run while drawing each generated row.
 function onFill()
    if state.isPaused then
-      sim:fillScreen()
+   -- Preserve existing pixels while rendering the generations added by Fill.
+      sim:fillScreen(function(row)
+         drawRowToCanvas(row, state.cellSize)
+      end)
    end
 end
 
+--- Reset the simulation and canvas, then draw the initial generation.
 function onReset()
    sim:reset()
+   love.graphics.setCanvas(activeCanvas)
+   love.graphics.clear(panel.deadColor[1], panel.deadColor[2], panel.deadColor[3], 1)
+   love.graphics.setCanvas()
+   drawRowToCanvas(sim.cells, state.cellSize)
 end
 
+--- Apply a rule entered in the panel and draw its initial generation.
 function onRuleInput(rule)
    sim:setRule(rule)
    sim:reset()
+   drawRowToCanvas(sim.cells, state.cellSize)
 end
 
+--- Select the previous rule and draw its initial generation.
 function onPreviousRule()
    sim:previousRule()
+   drawRowToCanvas(sim.cells, state.cellSize)
 end
 
+--- Select the next rule and draw its initial generation.
 function onNextRule()
    sim:nextRule()
+   drawRowToCanvas(sim.cells, state.cellSize)
 end
 
+--- Change the initial pattern and restart the simulation.
 function onInitMode(initMode)
    sim:setInitMode(initMode)
 end
 
+--- Clamp the cell size and rebuild the simulation grid dimensions.
 function changeCellSize(size)
    state.cellSize = util.clamp(size, 1, 10)
    sim:resize(getRowSize(), getMaxGenerations())

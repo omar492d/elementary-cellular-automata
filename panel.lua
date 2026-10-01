@@ -43,7 +43,7 @@ local Panel = {
 	dividingLineCoords = {}
 }
 
---Pulls the RGB sliders back in line with whichever colour is being edited
+--- Synchronize the RGB sliders with the currently selected color.
 function Panel:syncSlidersToColor()
 	local c = self.editingAliveColor and self.aliveColor or self.deadColor
 	self.rSlider.value = c[1] * 255
@@ -51,12 +51,14 @@ function Panel:syncSlidersToColor()
 	self.bSlider.value = c[3] * 255
 end
 
+--- Apply a preset to both colors and synchronize the sliders.
 function Panel:applyPreset(preset)
 	self.aliveColor = {preset.alive[1]/255, preset.alive[2]/255, preset.alive[3]/255}
 	self.deadColor = {preset.dead[1]/255, preset.dead[2]/255, preset.dead[3]/255}
 	self:syncSlidersToColor()
 end
 
+--- Draw the panel background, widgets, and section dividers.
 function Panel:draw()
 	love.graphics.setColor(204/255, 204/255, 204/255)
 	love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
@@ -70,6 +72,7 @@ function Panel:draw()
 	
 end
 
+--- Build the panel widgets and dispatch input through registered callbacks.
 function Panel:update(dt, state, sim)
 	self.dividingLineCoords = {}
 	suit.layout:reset(30, 20)
@@ -214,14 +217,17 @@ function Panel:update(dt, state, sim)
 	love.graphics.rectangle("fill", 60, 100, 200, 250)
 end
 
+--- Store the application callbacks used by panel controls.
 function Panel:setCallbacks(callbacks)
 	self.callbacks = callbacks
 end
 
+--- Forward a key press to the SUIT widget system.
 function Panel:keypressed(key)
 	suit.keypressed(key)
 end
 
+--- Forward typed text to the SUIT widget system.
 function Panel:textinput(t)
 	suit.textinput(t)
 end

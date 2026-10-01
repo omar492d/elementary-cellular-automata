@@ -1,6 +1,6 @@
 local util = {}
 
---utilities
+--- Return a shallow copy of a table.
 function util.shallow_copy(original_table)
    local new_table = {}
    for k, v in pairs(original_table) do
@@ -9,9 +9,7 @@ function util.shallow_copy(original_table)
    return new_table
 end
 
---num: the integer to turn to binary
---bits: the number of bits in the result
---returns as a table of integers
+--- Convert a nonnegative integer to a zero-padded array of binary digits.
 function util.toBinary(num, bits) 
    local binary = ""
    while num > 0 do
@@ -26,6 +24,7 @@ function util.toBinary(num, bits)
 
 end
 
+--- Convert a string of digits into an array of numbers.
 function util.strToTable(str)
    local list = {}
    for i=1,#str do
@@ -34,6 +33,7 @@ function util.strToTable(str)
    return list
 end
 
+--- Print an array in a compact bracketed format.
 function util.printTable(tbl)
    local endString = ""
    for i,v in ipairs(tbl) do
@@ -43,10 +43,12 @@ function util.printTable(tbl)
    print(endString)
 end
 
+--- Restrict a value to the inclusive low-to-high range.
 function util.clamp(value, low, high)
    return math.max(low, math.min(value, high))
 end
 
+--- Draw coordinate labels for the current window dimensions.
 function util.createRuler()
    local value = 0
    while value < HEIGHT do
