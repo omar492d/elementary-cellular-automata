@@ -6,11 +6,11 @@ An elementary cellular automaton is a row of cells with two possible states. Eac
 
 ## Screenshots
 
-![Rule 30 in the classic black-and-white palette](assets/screenshots/classic-rule-30.png)
+![Rule 30 in the classic black-and-white palette](assets/classic-rule-30.png)
 
-![A cyan layered cellular automaton pattern](assets/screenshots/cyan-layered.png)
+![A cyan layered cellular automaton pattern](assets/cyan-layered.png)
 
-![A warm multicolor layered cellular automaton pattern](assets/screenshots/warm-layered.png)
+![A warm multicolor layered cellular automaton pattern](assets/warm-layered.png)
 
 ## Features
 
